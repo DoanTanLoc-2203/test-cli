@@ -1,0 +1,10 @@
+{
+  "headers": {
+    "x-api-key": "123456780"
+  },
+  "body": {
+    "name": "All",
+    "age": 15,
+    "email": "data@gmail.com"
+  }
+}
