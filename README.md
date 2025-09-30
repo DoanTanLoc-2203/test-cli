@@ -11,7 +11,7 @@ npm run build
 Run validate input using schema
 
 ```bash
-npm run validate -- examples/schema01.yml examples/schema01-data.json
+npm run validate examples/schema01.yml examples/schema01-data.json
 ```
 
 Run compare json
