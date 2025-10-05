@@ -1,0 +1,35 @@
+{
+  "customer": {
+    "id": "user.id",
+    "name": "user.info.name",
+    "age": "user.info.age",
+    "email": "user.contact.email",
+    "profile": {
+      "phone": "user.contact.phone",
+      "location": {
+        "city": "user.address.city",
+        "country": "user.address.country"
+      }
+    }
+  },
+  "summary": {
+    "orderCount": "orders.length",
+    "lastSource": "meta.sourceSystem"
+  },
+  "orders": [
+    {
+      "code": "orders[].orderId",
+      "total": "orders[].total",
+      "products": [
+        {
+          "sku": "orders[].items[].sku",
+          "quantity": "orders[].items[].qty",
+          "price": "orders[].items[].price"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "generatedAt": "meta.createdAt"
+  }
+}

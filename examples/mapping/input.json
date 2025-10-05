@@ -1,0 +1,36 @@
+{
+  "user": {
+    "id": 101,
+    "info": {
+      "name": "Alice Doe",
+      "age": 25
+    },
+    "contact": {
+      "email": "alice@example.com",
+      "phone": "123456789"
+    },
+    "address": {
+      "city": "Hanoi",
+      "country": "Vietnam"
+    }
+  },
+  "orders": [
+    {
+      "orderId": "ORD001",
+      "total": 500,
+      "items": [
+        { "sku": "A1", "qty": 2, "price": 100 },
+        { "sku": "B2", "qty": 3, "price": 100 }
+      ]
+    },
+    {
+      "orderId": "ORD002",
+      "total": 300,
+      "items": [{ "sku": "C3", "qty": 1, "price": 300 }]
+    }
+  ],
+  "meta": {
+    "sourceSystem": "CRM",
+    "createdAt": "2025-10-05T12:00:00Z"
+  }
+}

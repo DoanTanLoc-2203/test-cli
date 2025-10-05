@@ -6,15 +6,20 @@
   "scripts": {
     "build": "tsc",
     "validate": "node dist/validate-cli.js",
-    "compare-json": "node dist/compare-json.js"
+    "compare-json": "node dist/compare-json.js",
+    "validate-mapping": "node dist/validate-mapping.js"
   },
   "dependencies": {
     "ajv": "^8.17.1",
     "ajv-formats": "^2.1.1",
-    "yaml": "^2.5.0"
+    "lodash": "^4.17.21",
+    "yaml": "^2.5.0",
+    "yargs": "^18.0.0"
   },
   "devDependencies": {
+    "@types/lodash": "^4.17.20",
     "@types/node": "^20.14.2",
+    "@types/yargs": "^17.0.33",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
   },

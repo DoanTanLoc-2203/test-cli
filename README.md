@@ -19,3 +19,9 @@ Run compare json
 ```bash
 npm run compare-json examples/file1.json examples/file2.json
 ```
+
+Run validate mapping
+
+```bash
+npm run validate-mapping -- --source examples/mapping/input.json  --target examples/mapping/output.json --mapping examples/mapping/mapping-config.json
+```
