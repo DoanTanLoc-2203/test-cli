@@ -44,7 +44,6 @@ function findLeftmostArrayRoot(template: any): string | null {
   if (typeof template === "string") {
     const pos = template.indexOf("[]");
     if (pos !== -1) {
-      // lấy substring trước "[]", xóa dot nếu có cuối cùng
       let s = template.slice(0, pos);
       if (s.endsWith(".")) s = s.slice(0, -1);
       return s;
@@ -68,7 +67,6 @@ function findLeftmostArrayRoot(template: any): string | null {
 /** Thay thế **chỉ 1 lần** placeholder "[]" trong tất cả các string của template (deep clone) */
 function replaceFirstPlaceholderDeep(template: any, index: number): any {
   if (typeof template === "string") {
-    // chỉ thay lần đầu xuất hiện của "[]"
     return template.replace(/\[\]/, `[${index}]`);
   } else if (Array.isArray(template)) {
     return template.map((it) => replaceFirstPlaceholderDeep(it, index));
@@ -82,7 +80,7 @@ function replaceFirstPlaceholderDeep(template: any, index: number): any {
   return template;
 }
 
-/** So sánh mềm để tránh mismatch "100" vs 100 trừ khi bạn muốn strict */
+/** So sánh mềm để tránh mismatch "100" vs 100 */
 function looselyEqual(a: any, b: any): boolean {
   if (a === undefined || a === null) return b === undefined || b === null;
   if (typeof a === "number" && typeof b === "string") return a == +b;
@@ -92,13 +90,51 @@ function looselyEqual(a: any, b: any): boolean {
   return a === b;
 }
 
-/**
- * Core validator
- * - source: object1
- * - target: object2
- * - mapTemplate: mapping node (string | object | [templateObject])
- * - basePath: path at target we're validating (eg "orders[0].code")
+/** ====== BUILD (EXPORT) ======
+ * Sinh object2 từ object1 dựa trên mapping template
  */
+function buildTargetFromMapping(source: any, mapTemplate: any): any {
+  if (typeof mapTemplate === "string") {
+    // IMPORTANT: không xóa "[]". Nếu chuỗi còn "[]", nghĩa là caller (parent array handler)
+    // chưa thay index — trong flow bình thường parent sẽ replace trước khi gọi.
+    // Nếu vẫn còn "[]", ta cố lấy "non-indexed" fallback (ví dụ lấy first item?) — nhưng ở đây ta trả undefined.
+    return getValueByPath(source, mapTemplate);
+  }
+
+  if (Array.isArray(mapTemplate)) {
+    const template = mapTemplate[0];
+    const root = findLeftmostArrayRoot(template);
+
+    // Nếu không có placeholder "[]", coi như array đơn giản mapping#indexed same path
+    if (!root) {
+      // fallback: try to read source array at base path "", but here we have no base path context
+      // safest: return empty array
+      return [];
+    }
+
+    const sourceArr = getValueByPath(source, root) ?? [];
+    if (!Array.isArray(sourceArr)) return [];
+
+    // map each element: replace only the leftmost placeholder per iteration,
+    // then recurse — nested placeholders will be replaced in deeper recursion
+    return sourceArr.map((_, i) => {
+      const replaced = replaceFirstPlaceholderDeep(template, i);
+      return buildTargetFromMapping(source, replaced);
+    });
+  }
+
+  if (typeof mapTemplate === "object" && mapTemplate !== null) {
+    const out: any = {};
+    for (const [k, v] of Object.entries(mapTemplate)) {
+      out[k] = buildTargetFromMapping(source, v);
+    }
+    return out;
+  }
+
+  return mapTemplate;
+}
+
+/** ====== VALIDATE (copy of prior logic) ====== **/
 function validateMapping(
   source: any,
   target: any,
@@ -107,16 +143,13 @@ function validateMapping(
 ): ValidationResult[] {
   const res: ValidationResult[] = [];
 
-  // case: leaf mapping string -> interpret as source path
   if (typeof mapTemplate === "string") {
-    // remove any remaining placeholders (should have been replaced by parents)
     const sourcePath = mapTemplate
       .replace(/\[\]/g, "")
       .replace(/\.\./g, ".")
       .replace(/^\./, "");
     const expected = getValueByPath(source, sourcePath);
     const actual = getValueByPath(target, basePath);
-
     const ok = looselyEqual(expected, actual);
     res.push({
       path: basePath,
@@ -132,59 +165,23 @@ function validateMapping(
     return res;
   }
 
-  // case: mapping is an array template -> means target at basePath should be an array
   if (Array.isArray(mapTemplate)) {
     const template = mapTemplate[0];
     const root = findLeftmostArrayRoot(template);
-    if (!root) {
-      // no [] found in template: treat as array of primitive/object mapped by index keys
-      const srcArr = getValueByPath(source, basePath) ?? [];
-      const tgtArr = getValueByPath(target, basePath) ?? [];
-      if (!Array.isArray(srcArr) || !Array.isArray(tgtArr)) {
-        res.push({
-          path: basePath,
-          ok: false,
-          expected: Array.isArray(srcArr) ? "array" : typeof srcArr,
-          actual: Array.isArray(tgtArr) ? "array" : typeof tgtArr,
-          message: `❌ Expected array at "${basePath}"`,
-        });
-        return res;
-      }
-      const len = Math.min(srcArr.length, tgtArr.length);
-      for (let i = 0; i < len; i++) {
-        res.push(
-          ...validateMapping(source, target, template, `${basePath}[${i}]`)
-        );
-      }
-      return res;
-    }
-
-    // root like "orders" or "user.orders"
-    const sourceArr = getValueByPath(source, root) ?? [];
+    const sourceArr = getValueByPath(source, root || "") ?? [];
     const targetArr = getValueByPath(target, basePath) ?? [];
 
-    if (!Array.isArray(sourceArr)) {
-      res.push({
-        path: basePath,
-        ok: false,
-        expected: "array",
-        actual: typeof sourceArr,
-        message: `❌ Expected array at source path "${root}", got ${typeof sourceArr}`,
-      });
-      return res;
-    }
-    if (!Array.isArray(targetArr)) {
+    if (!Array.isArray(sourceArr) || !Array.isArray(targetArr)) {
       res.push({
         path: basePath,
         ok: false,
         expected: "array",
         actual: typeof targetArr,
-        message: `❌ Expected array at target "${basePath}", got ${typeof targetArr}`,
+        message: `❌ Expected array at "${basePath}", got ${typeof targetArr}`,
       });
       return res;
     }
 
-    // require equal lengths (you can change to min if you want permissive)
     if (sourceArr.length !== targetArr.length) {
       res.push({
         path: basePath,
@@ -196,9 +193,8 @@ function validateMapping(
       return res;
     }
 
-    // iterate and replace only the leftmost [] (per-field) with current index
     for (let i = 0; i < sourceArr.length; i++) {
-      const replaced = replaceFirstPlaceholderDeep(template, i); // replaces first [] occurrences to [i]
+      const replaced = replaceFirstPlaceholderDeep(template, i);
       res.push(
         ...validateMapping(source, target, replaced, `${basePath}[${i}]`)
       );
@@ -206,7 +202,6 @@ function validateMapping(
     return res;
   }
 
-  // case: object -> dive into keys
   if (typeof mapTemplate === "object" && mapTemplate !== null) {
     for (const [key, val] of Object.entries(mapTemplate)) {
       const nextBase = basePath ? `${basePath}.${key}` : key;
@@ -217,27 +212,43 @@ function validateMapping(
   return res;
 }
 
-/** CLI */
+/** ====== CLI ENTRY ====== **/
 async function main() {
   const argv = await yargs(hideBin(process.argv))
     .option("source", { type: "string", demandOption: true })
-    .option("target", { type: "string", demandOption: true })
     .option("mapping", { type: "string", demandOption: true })
+    .option("target", { type: "string" })
+    .option("export", { type: "boolean", default: false })
+    .option("output", { type: "string", default: "output.json" })
     .parse();
 
   const readJSON = (p: string) =>
     JSON.parse(fs.readFileSync(path.resolve(p), "utf8"));
 
   const source = readJSON(argv.source);
-  const target = readJSON(argv.target);
   const mapping = readJSON(argv.mapping);
 
+  if (argv.export) {
+    console.log("⚙️  Exporting target object from mapping...");
+    const result = buildTargetFromMapping(source, mapping);
+    fs.writeFileSync(
+      path.resolve(argv.output),
+      JSON.stringify(result, null, 2)
+    );
+    console.log(`✅ Exported mapped target to ${argv.output}`);
+    return;
+  }
+
+  if (!argv.target) {
+    console.error("❌ Missing --target for validation mode");
+    process.exit(1);
+  }
+
+  const target = readJSON(argv.target);
   console.log("🔍 Validating mapping...\n");
 
   const results = validateMapping(source, target, mapping);
   const errors = results.filter((r) => !r.ok);
-
-  // print all messages (matches + mismatches)
   for (const r of results) console.log(r.message);
 
   console.log("\n───────────────────────────────");

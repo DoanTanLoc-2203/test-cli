@@ -25,3 +25,9 @@ Run validate mapping
 ```bash
 npm run validate-mapping -- --source examples/mapping/input.json  --target examples/mapping/output.json --mapping examples/mapping/mapping-config.json
 ```
+
+Run export from mapping config
+
+```bash
+npm run validate-mapping -- --source examples/mapping/input.json --mapping examples/mapping/mapping-config.json --export --output examples/mapping/generated.json
+```

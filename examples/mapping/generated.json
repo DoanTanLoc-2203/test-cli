@@ -1,0 +1,51 @@
+{
+  "customer": {
+    "id": 101,
+    "name": "Alice Doe",
+    "age": 25,
+    "email": "alice@example.com",
+    "profile": {
+      "phone": "123456789",
+      "location": {
+        "city": "Hanoi",
+        "country": "Vietnam"
+      }
+    }
+  },
+  "summary": {
+    "orderCount": 2,
+    "lastSource": "CRM"
+  },
+  "orders": [
+    {
+      "code": "ORD001",
+      "total": 500,
+      "products": [
+        {
+          "sku": "A1",
+          "quantity": 2,
+          "price": 100
+        },
+        {
+          "sku": "B2",
+          "quantity": 3,
+          "price": 100
+        }
+      ]
+    },
+    {
+      "code": "ORD002",
+      "total": 300,
+      "products": [
+        {
+          "sku": "C3",
+          "quantity": 1,
+          "price": 300
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "generatedAt": "2025-10-05T12:00:00Z"
+  }
+}
